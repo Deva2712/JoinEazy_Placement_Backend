@@ -1,0 +1,27 @@
+{
+  "name": "joineazy-placement-backend",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Placement service for the JoinEazy ERP — drives, applications, offers, companies, training.",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "nodemon index.js",
+    "db:migrate": "node src/database/migrate.js",
+    "db:seed": "node src/database/seed.js",
+    "db:setup": "npm run db:migrate && npm run db:seed"
+  },
+  "dependencies": {
+    "compression": "^1.7.4",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.0",
+    "jsonwebtoken": "^9.0.2",
+    "pg": "^8.12.0",
+    "pg-hstore": "^2.3.4",
+    "sequelize": "^6.37.0",
+    "winston": "^3.14.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.4"
+  }
+}
