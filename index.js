@@ -5,6 +5,8 @@ import logger from "./src/utils/logger.js";
 
 // Register every model (and association) before any sync runs.
 import "./src/database/models.js";
+import { seedAll } from "./src/database/seed.js";
+import { Company } from "./src/modules/companies/companies-model.js";
 
 // ─── Process-level safety net ────────────────────────────────────────────────
 // Node terminates on an unhandled rejection by default. One un-awaited promise
@@ -37,6 +39,15 @@ const start = async () => {
     } else if (process.env.DB_SYNC !== "none") {
       await sequelize.sync();
       logger.info("Database synced (safe — created missing tables only)");
+    }
+
+    // First-boot seed. `docker compose up --build` starts an empty database, and
+    // a demo that opens on empty tabs is indistinguishable from a broken one.
+    // Guarded on the table actually being empty, so it never touches real data
+    // and never runs twice. Set AUTO_SEED=false to opt out.
+    if (process.env.AUTO_SEED !== "false" && (await Company.count()) === 0) {
+      logger.info("No companies found — running first-boot seed…");
+      await seedAll({ standalone: false });
     }
 
     app.listen(PORT, () => logger.info(`Placement API listening on ${PORT}`));

@@ -1,0 +1,11 @@
+# See the frontend's .dockerignore — same reasoning. The Dockerfile installs
+# dependencies inside the image; the host copy is platform-specific.
+node_modules
+**/node_modules
+
+.git
+.gitignore
+logs
+uploads
+*.log
+.DS_Store

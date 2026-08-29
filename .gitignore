@@ -3,3 +3,5 @@ logs/
 *.log
 .env
 .DS_Store
+HANDOFF_NOTES.md
+RUNBOOK.md
