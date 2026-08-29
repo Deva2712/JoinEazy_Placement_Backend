@@ -10,7 +10,10 @@ router.use(protect);
 router.get("/",        ctrl.list);
 router.get("/:id",     ctrl.get);
 router.post("/",       authorize(...PLACEMENT_STAFF), ctrl.create);
-router.put("/:id",     authorize(...PLACEMENT_STAFF), ctrl.update);
+// Literal path before the parameterised one, or "/bulk" is read as an :id.
+router.post("/bulk",   authorize(...PLACEMENT_STAFF), ctrl.createBulk);
+router.patch("/:id",     authorize(...PLACEMENT_STAFF), ctrl.update);
+router.patch("/:id/status", authorize(...PLACEMENT_STAFF), ctrl.setStatus);
 router.delete("/:id",  authorize(...PLACEMENT_STAFF), ctrl.remove);
 
 export default router;
