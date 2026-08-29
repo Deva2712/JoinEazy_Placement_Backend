@@ -18,12 +18,19 @@ router.post("/",   authorize(...PLACEMENT_STAFF), ctrl.create);
 router.get("/:jobId/rounds",     ctrl.listRounds);
 router.post("/:jobId/rounds",    authorize(...PLACEMENT_STAFF), ctrl.addRound);
 router.get("/:jobId/applicants", authorize(...PLACEMENT_STAFF), ctrl.applicants);
+router.post("/:jobId/applicants", authorize(...PLACEMENT_STAFF), ctrl.importApplicants);
+router.get("/:jobId/interviews", authorize(...PLACEMENT_STAFF), ctrl.interviewsForJob);
+router.get("/:jobId/round-results", authorize(...PLACEMENT_STAFF), ctrl.roundResults);
+router.patch("/:jobId/assessment",         authorize(...PLACEMENT_STAFF), ctrl.publishAssessment);
+router.get("/:jobId/assessment/results",   authorize(...PLACEMENT_STAFF), ctrl.getAssessmentResults);
+router.post("/:jobId/assessment/results",  authorize(...PLACEMENT_STAFF), ctrl.uploadAssessmentResults);
+router.get("/:jobId/shortlisted",          authorize(...PLACEMENT_STAFF), ctrl.getShortlistedForJob);
 router.post("/:jobId/advance",   authorize(...PLACEMENT_STAFF), ctrl.advance);
 router.post("/:jobId/rounds/:roundId/outcomes",        authorize(...PLACEMENT_STAFF), ctrl.recordOutcomes);
 router.post("/:jobId/rounds/:roundId/outcomes/revert", authorize(...PLACEMENT_STAFF), ctrl.revertOutcomes);
 
 router.get("/:id",    ctrl.get);
-router.put("/:id",    authorize(...PLACEMENT_STAFF), ctrl.update);
+router.patch("/:id",    authorize(...PLACEMENT_STAFF), ctrl.update);
 router.delete("/:id", authorize(...PLACEMENT_STAFF), ctrl.remove);
 
 export default router;

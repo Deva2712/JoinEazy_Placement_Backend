@@ -15,6 +15,7 @@ const AssessmentTest = sequelize.define("AssessmentTest", {
   url:       { type: DataTypes.STRING, allowNull: true },
   total_marks:{ type: DataTypes.FLOAT, allowNull: true },
   cutoff:    { type: DataTypes.FLOAT, allowNull: true },
+  instructions: { type: DataTypes.TEXT, allowNull: true },
   scheduled_at:{ type: DataTypes.DATE, allowNull: true },
   duration_mins:{ type: DataTypes.INTEGER, allowNull: true },
   status:    { type: DataTypes.ENUM("Draft", "Scheduled", "Completed", "Cancelled"), defaultValue: "Draft" },
@@ -36,6 +37,9 @@ const AssessmentScore = sequelize.define("AssessmentScore", {
   // not silently rewrite history.
   result:     { type: DataTypes.ENUM("Cleared", "Not cleared", "Absent", "Pending"), defaultValue: "Pending" },
   attempted_at:{ type: DataTypes.DATE, allowNull: true },
+  // Free-text note per result row — the results CSV carries an optional
+  // `notes` column the coordinator uses for no-show/re-test remarks.
+  notes:       { type: DataTypes.TEXT, allowNull: true },
 }, {
   tableName: "placement_assessment_scores",
   timestamps: true,

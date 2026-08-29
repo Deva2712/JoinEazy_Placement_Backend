@@ -4,26 +4,28 @@ import sequelize from "../../database/connection.js";
 import { Job, DriveRound } from "../jobs/jobs-model.js";
 import { PlacementStudent } from "../students/students-model.js";
 
-/** A student's application to one drive. Unique per (job, student). */
 const Application = sequelize.define("Application", {
   id:          { type: DataTypes.UUID, defaultValue: DataTypes.UUIDV4, primaryKey: true },
-  job_id:      { type: DataTypes.UUID, allowNull: false },
-  student_id:  { type: DataTypes.UUID, allowNull: false },
-  // Denormalised for list views that would otherwise join on every row.
-  student_name:{ type: DataTypes.STRING, allowNull: true },
-  student_roll:{ type: DataTypes.STRING, allowNull: true },
+  jobId:       { type: DataTypes.UUID, allowNull: false },
+  studentId:   { type: DataTypes.UUID, allowNull: false },
+  studentName: { type: DataTypes.STRING, allowNull: true },
+  studentRoll: { type: DataTypes.STRING, allowNull: true },
+  // The first eight values are exactly APPLICATION_STATUSES from the frontend's
+  // placementCoordConstants.js — the ATS board, funnel and transition graph all
+  // branch on those literals, so they are the vocabulary of record. The rest are
+  // the skeleton's original names, kept so existing rows and the drive-stage
+  // flow ("Assessment") keep validating.
   status: {
     type: DataTypes.ENUM(
-      "Applied", "Assessment", "Assessment Cleared", "Shortlisted",
-      "Interview Scheduled", "Interviewing", "Selected",
-      "Offer Received", "Accepted", "Rejected", "Withdrawn"
+      "Applied", "Shortlisted", "Test Cleared", "Interview Scheduled",
+      "Selected", "Rejected", "Offer Received", "Placed",
+      "Assessment", "Assessment Cleared", "Interviewing", "Accepted", "Withdrawn"
     ),
     defaultValue: "Applied",
   },
-  // How far the student has progressed; null before the first round.
-  current_round: { type: DataTypes.INTEGER, allowNull: true },
-  resume_url:  { type: DataTypes.STRING, allowNull: true },
-  applied_at:  { type: DataTypes.DATE, defaultValue: DataTypes.NOW },
+  currentRound: { type: DataTypes.INTEGER, allowNull: true },
+  resumeUrl:   { type: DataTypes.STRING, allowNull: true },
+  appliedAt:   { type: DataTypes.DATE, defaultValue: DataTypes.NOW },
   notes:       { type: DataTypes.TEXT, allowNull: true },
 }, {
   tableName: "placement_applications",
@@ -35,17 +37,16 @@ const Application = sequelize.define("Application", {
   ],
 });
 
-/** Outcome of one student in one round — the per-round scorecard. */
 const RoundResult = sequelize.define("RoundResult", {
   id:            { type: DataTypes.UUID, defaultValue: DataTypes.UUIDV4, primaryKey: true },
-  job_id:        { type: DataTypes.UUID, allowNull: false },
-  round_id:      { type: DataTypes.UUID, allowNull: false },
-  application_id:{ type: DataTypes.UUID, allowNull: true },
-  student_id:    { type: DataTypes.UUID, allowNull: false },
+  jobId:         { type: DataTypes.UUID, allowNull: false },
+  roundId:       { type: DataTypes.UUID, allowNull: false },
+  applicationId: { type: DataTypes.UUID, allowNull: true },
+  studentId:     { type: DataTypes.UUID, allowNull: false },
   status:        { type: DataTypes.ENUM("Cleared", "Rejected", "Pending", "Absent"), defaultValue: "Pending" },
   score:         { type: DataTypes.FLOAT, allowNull: true },
-  recorded_at:   { type: DataTypes.DATE, defaultValue: DataTypes.NOW },
-  recorded_by:   { type: DataTypes.UUID, allowNull: true },
+  recordedAt:    { type: DataTypes.DATE, defaultValue: DataTypes.NOW },
+  recordedBy:    { type: DataTypes.UUID, allowNull: true },
   notes:         { type: DataTypes.TEXT, allowNull: true },
 }, {
   tableName: "placement_round_results",
@@ -57,13 +58,13 @@ const RoundResult = sequelize.define("RoundResult", {
   ],
 });
 
-Job.hasMany(Application, { foreignKey: "job_id", as: "applications", onDelete: "CASCADE" });
-Application.belongsTo(Job, { foreignKey: "job_id", as: "job" });
-PlacementStudent.hasMany(Application, { foreignKey: "student_id", as: "applications", onDelete: "CASCADE" });
-Application.belongsTo(PlacementStudent, { foreignKey: "student_id", as: "student" });
-Application.hasMany(RoundResult, { foreignKey: "application_id", as: "roundResults" });
-RoundResult.belongsTo(Application, { foreignKey: "application_id" });
-DriveRound.hasMany(RoundResult, { foreignKey: "round_id", as: "results", onDelete: "CASCADE" });
-RoundResult.belongsTo(DriveRound, { foreignKey: "round_id", as: "round" });
+Job.hasMany(Application, { foreignKey: "jobId", as: "applications", onDelete: "CASCADE" });
+Application.belongsTo(Job, { foreignKey: "jobId", as: "job" });
+PlacementStudent.hasMany(Application, { foreignKey: "studentId", as: "applications", onDelete: "CASCADE" });
+Application.belongsTo(PlacementStudent, { foreignKey: "studentId", as: "student" });
+Application.hasMany(RoundResult, { foreignKey: "applicationId", as: "roundResults" });
+RoundResult.belongsTo(Application, { foreignKey: "applicationId" });
+DriveRound.hasMany(RoundResult, { foreignKey: "roundId", as: "results", onDelete: "CASCADE" });
+RoundResult.belongsTo(DriveRound, { foreignKey: "roundId", as: "round" });
 
 export { Application, RoundResult };

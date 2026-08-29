@@ -10,3 +10,9 @@ export const get    = asyncHandler(c.get);
 export const create = asyncHandler(c.create);
 export const update = asyncHandler(c.update);
 export const remove = asyncHandler(c.remove);
+
+/** POST /batch — body { slots: [...] }, one request for a whole cohort. */
+export const createBatch = asyncHandler(async (req, res) => {
+  const slots = Array.isArray(req.body) ? req.body : req.body?.slots;
+  res.status(201).json({ success: true, data: await service.createBatch(slots) });
+});

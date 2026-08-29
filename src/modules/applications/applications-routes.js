@@ -8,11 +8,14 @@ router.use(protect);
 
 // "mine" and "status" are literals — declared before /:id.
 router.get("/mine",    ctrl.mine);
-router.put("/status",  authorize(...PLACEMENT_STAFF), ctrl.setStatusBulk);
+router.get("/coord",   authorize(...PLACEMENT_STAFF), ctrl.list);
+router.post("/:applicationId/interview", authorize(...PLACEMENT_STAFF), ctrl.scheduleInterview);
+router.patch("/status",  authorize(...PLACEMENT_STAFF), ctrl.setStatusBulk);
 
-router.get("/",           authorize(...PLACEMENT_STAFF), ctrl.list);
+router.get("/",        ctrl.listOrMine);
+router.post("/",       ctrl.applyByBody);
 router.get("/:id",        ctrl.get);
-router.put("/:id/status", authorize(...PLACEMENT_STAFF), ctrl.setStatus);
+router.patch("/:id/status", authorize(...PLACEMENT_STAFF), ctrl.setStatus);
 router.delete("/:id",     ctrl.remove);   // a student may withdraw
 
 export default router;

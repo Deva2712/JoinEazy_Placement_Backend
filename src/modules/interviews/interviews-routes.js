@@ -10,7 +10,9 @@ router.use(protect);
 router.get("/",        ctrl.list);
 router.get("/:id",     ctrl.get);
 router.post("/",       authorize(...PLACEMENT_STAFF), ctrl.create);
-router.put("/:id",     authorize(...PLACEMENT_STAFF), ctrl.update);
+// Literal path before the parameterised one, or "/batch" is read as an :id.
+router.post("/batch",  authorize(...PLACEMENT_STAFF), ctrl.createBatch);
+router.patch("/:id",     authorize(...PLACEMENT_STAFF), ctrl.update);
 router.delete("/:id",  authorize(...PLACEMENT_STAFF), ctrl.remove);
 
 export default router;

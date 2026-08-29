@@ -3,23 +3,25 @@ import { DataTypes } from "sequelize";
 import sequelize from "../../database/connection.js";
 import { Application } from "../applications/applications-model.js";
 
-/** A scheduled interview slot for one application/round. */
 const InterviewSlot = sequelize.define("InterviewSlot", {
   id:            { type: DataTypes.UUID, defaultValue: DataTypes.UUIDV4, primaryKey: true },
-  application_id:{ type: DataTypes.UUID, allowNull: true },
-  job_id:        { type: DataTypes.UUID, allowNull: false },
-  round_id:      { type: DataTypes.UUID, allowNull: true },
-  student_id:    { type: DataTypes.UUID, allowNull: false },
-  student_name:  { type: DataTypes.STRING, allowNull: true },
+  applicationId: { type: DataTypes.UUID, allowNull: true },
+  jobId:         { type: DataTypes.UUID, allowNull: false },
+  roundId:       { type: DataTypes.UUID, allowNull: true },
+  studentId:     { type: DataTypes.UUID, allowNull: false },
+  studentName:   { type: DataTypes.STRING, allowNull: true },
+  // Denormalised: InterviewsTab renders `studentId` as a human-readable roll
+  // number beside the name and searches on it, so reads emit this as
+  // `studentId` while the column keeps the real FK.
+  studentRollNo: { type: DataTypes.STRING, allowNull: true },
   round:         { type: DataTypes.INTEGER, allowNull: true },
-  // "Technical" | "HR" | "Group Discussion" | "Case Study"
   type:          { type: DataTypes.STRING, allowNull: true },
-  scheduled_at:  { type: DataTypes.DATE, allowNull: false },
-  duration_mins: { type: DataTypes.INTEGER, defaultValue: 60 },
+  scheduledAt:   { type: DataTypes.DATE, allowNull: false },
+  durationMins:  { type: DataTypes.INTEGER, defaultValue: 60 },
   mode:          { type: DataTypes.ENUM("Online", "Offline"), defaultValue: "Online" },
-  location:      { type: DataTypes.STRING, allowNull: true },  // when Offline
-  link:          { type: DataTypes.STRING, allowNull: true },  // when Online
-  panel_members: { type: DataTypes.JSON, allowNull: true, defaultValue: [] },
+  location:      { type: DataTypes.STRING, allowNull: true },
+  link:          { type: DataTypes.STRING, allowNull: true },
+  panelMembers:  { type: DataTypes.JSON, allowNull: true, defaultValue: [] },
   status:        { type: DataTypes.ENUM("Scheduled", "Completed", "Cancelled", "No show"), defaultValue: "Scheduled" },
   notes:         { type: DataTypes.TEXT, allowNull: true },
 }, {
@@ -32,7 +34,7 @@ const InterviewSlot = sequelize.define("InterviewSlot", {
   ],
 });
 
-Application.hasMany(InterviewSlot, { foreignKey: "application_id", as: "interviews", onDelete: "CASCADE" });
-InterviewSlot.belongsTo(Application, { foreignKey: "application_id", as: "application" });
+Application.hasMany(InterviewSlot, { foreignKey: "applicationId", as: "interviews", onDelete: "CASCADE" });
+InterviewSlot.belongsTo(Application, { foreignKey: "applicationId", as: "application" });
 
 export { InterviewSlot };
