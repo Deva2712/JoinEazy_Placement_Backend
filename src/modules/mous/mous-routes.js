@@ -10,7 +10,7 @@ router.use(protect);
 router.get("/",        ctrl.list);
 router.get("/:id",     ctrl.get);
 router.post("/",       authorize(...PLACEMENT_STAFF), ctrl.create);
-router.put("/:id",     authorize(...PLACEMENT_STAFF), ctrl.update);
+router.patch("/:id",     authorize(...PLACEMENT_STAFF), ctrl.update);
 router.delete("/:id",  authorize(...PLACEMENT_STAFF), ctrl.remove);
 
 export default router;
