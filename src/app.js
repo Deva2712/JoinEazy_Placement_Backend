@@ -27,6 +27,16 @@ import tasksRoutes from "./modules/tasks/tasks-routes.js";
 import offCampusRoutes from "./modules/tasks/offcampus-routes.js";
 import overviewRoutes from "./modules/overview/overview-routes.js";
 import authRoutes from "./modules/auth/auth-routes.js";
+import payrollRoutes from "./modules/payroll/payroll-routes.js";
+import leavesRoutes from "./modules/leaves/leaves-routes.js";
+import scheduleRoutes from "./modules/schedule/schedule-routes.js";
+import assetsRoutes from "./modules/assets/assets-routes.js";
+import maintenanceRoutes from "./modules/maintenance/maintenance-routes.js";
+import expensesRoutes from "./modules/expenses/expenses-routes.js";
+import advancesRoutes from "./modules/advances/advances-routes.js";
+import bulletinsRoutes from "./modules/bulletins/bulletins-routes.js";
+import userRoutes from "./modules/user/user-routes.js";
+import cohortRoutes from "./modules/cohort/cohort-routes.js";
 
 import { errorHandler } from "./middleware/error.middleware.js";
 import { UPLOAD_DIR } from "./middleware/upload.middleware.js";
@@ -72,6 +82,21 @@ app.use(express.urlencoded({ extended: true }));
 app.use(requestLogger);
 
 app.use("/api/v1/auth", authRoutes);
+
+// ─── Placement coordinator workspace ERP modules ─────────────────────────────
+// These paths intentionally sit at the same root prefixes the frontend services
+// already call: /payroll, /leaves, /professor, /assets, /maintenance, /expenses,
+// /advances, /bulletins, /user and /cohort.
+app.use("/api/v1/payroll", payrollRoutes);
+app.use("/api/v1/leaves", leavesRoutes);
+app.use("/api/v1/professor", scheduleRoutes);
+app.use("/api/v1/assets", assetsRoutes);
+app.use("/api/v1/maintenance", maintenanceRoutes);
+app.use("/api/v1/expenses", expensesRoutes);
+app.use("/api/v1/advances", advancesRoutes);
+app.use("/api/v1/bulletins", bulletinsRoutes);
+app.use("/api/v1/user", userRoutes);
+app.use("/api/v1/cohort", cohortRoutes);
 
 // ─── Placement modules ───────────────────────────────────────────────────────
 // Dashboards first: they declare literal paths (/overview, /coord/overview,

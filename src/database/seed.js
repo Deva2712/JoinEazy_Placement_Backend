@@ -23,6 +23,15 @@ import {
   TrainingInstructor, TrainingCourse, CourseEnrollment,
   TrainingSession, TrainingAttendance, TrainingTest, TrainingScore,
 } from "../modules/training/training-model.js";
+import { PayrollRecord } from "../modules/payroll/payroll-model.js";
+import { LeaveApplication, LeaveSubstitutionRequest } from "../modules/leaves/leaves-model.js";
+import { OfficeHour, TimetableEntry, ScheduledMeeting, MeetingRequest, OutgoingMeetingRequest } from "../modules/schedule/schedule-model.js";
+import { CampusAsset, AssetRequest } from "../modules/assets/assets-model.js";
+import { MaintenanceRequest } from "../modules/maintenance/maintenance-model.js";
+import { Expense } from "../modules/expenses/expenses-model.js";
+import { Advance } from "../modules/advances/advances-model.js";
+import { Bulletin } from "../modules/bulletins/bulletins-model.js";
+import { Cohort, CohortAnnouncement } from "../modules/cohort/cohort-model.js";
 
 const day = 86400000;
 const at = (offsetDays, hour = 10) => {
@@ -190,6 +199,16 @@ const TESTS = [
   ["DSA",           "DSA Advanced Mock",            100,  -6],
   ["Communication", "GD Evaluation",                 50,  -9],
 ];
+
+const payrollBreakdown = (netPay, absent = 1) => ({
+  attendance: { present: 22 - absent, absent },
+  basic: 82000,
+  hra: 32800,
+  bonuses: netPay > 120000 ? 12000 : 5000,
+  allowances: 9600,
+  deductions: { tax: 14000, pf: 9800, insurance: 1200, absence: absent * 1800 },
+  netPay,
+});
 
 // ─── Seed ─────────────────────────────────────────────────────────────────────
 export const seedAll = async ({ standalone = true } = {}) => {
@@ -504,6 +523,146 @@ export const seedAll = async ({ standalone = true } = {}) => {
       });
       bump("scores");
     }
+  }
+
+  const cohortBy = {};
+  for (const c of [
+    { cohort_name: "Placement Readiness 2026 - CSE", kind: "created" },
+    { cohort_name: "Internship Prep 2027", kind: "created" },
+    { cohort_name: "Product Analytics Circle", kind: "joined" },
+  ]) {
+    const [row, made] = await Cohort.findOrCreate({ where: { cohort_name: c.cohort_name }, defaults: c });
+    cohortBy[c.cohort_name] = row;
+    if (made) bump("workspaceCohorts");
+  }
+
+  for (const [month, amount, status, paidOffset, absent] of [
+    ["August 2026", 126400, "Paid", -3, 1],
+    ["July 2026", 119200, "Paid", -34, 2],
+    ["June 2026", 132100, "Paid", -64, 0],
+  ]) {
+    const [, made] = await PayrollRecord.findOrCreate({
+      where: { month },
+      defaults: { month, amount, status, paidAt: ymd(paidOffset), breakdown: payrollBreakdown(amount, absent) },
+    });
+    if (made) bump("payrollRecords");
+  }
+
+  for (const item of [
+    { facultyName: "Priya Sharma", leaveType: "Casual Leave", fromDate: ymd(8), toDate: ymd(9), courseName: "Placement Lab", roomNumber: "B-204", timings: { startTime: "10:00", endTime: "12:00" }, reason: "Campus recruitment travel", note: "Resume clinic will be covered", replacementFaculty: "Prof. Arjun Verma", substitutionStatus: "Pending", status: "Pending", appliedAt: at(-1), leaveApproval: { HoD: { status: "Pending", remark: null }, HR: { status: "Pending", remark: null } } },
+    { facultyName: "Priya Sharma", leaveType: "Medical Leave", fromDate: ymd(-14), toDate: ymd(-13), courseName: "Aptitude", roomNumber: "Seminar Hall A", timings: { startTime: "14:00", endTime: "15:30" }, reason: "Medical appointment", replacementFaculty: "Dr. Meera Iyer", substitutionStatus: "Accepted", status: "Approved", appliedAt: at(-20), leaveApproval: { HoD: { status: "Approved", remark: "Covered by department" }, HR: { status: "Approved", remark: "Approved" } } },
+    { facultyName: "Priya Sharma", leaveType: "Earned Leave", fromDate: ymd(-35), toDate: ymd(-32), courseName: "System Design", roomNumber: "Lab 1", timings: { startTime: "09:00", endTime: "10:30" }, reason: "Family event", replacementFaculty: "Dr. Rohan Kapoor", substitutionStatus: "Rejected", status: "Rejected", appliedAt: at(-45), leaveApproval: { HoD: { status: "Rejected", remark: "Drive week coverage unavailable" }, HR: { status: "Pending", remark: null } } },
+  ]) {
+    const [, made] = await LeaveApplication.findOrCreate({ where: { facultyName: item.facultyName, fromDate: item.fromDate, leaveType: item.leaveType }, defaults: item });
+    if (made) bump("leaveApplications");
+  }
+
+  for (const item of [
+    { requesterName: "Prof. Arjun Verma", leaveType: "Casual Leave", fromDate: ymd(2), toDate: ymd(2), courseName: "DSA", roomNumber: "Lab 2", timings: { startTime: "11:00", endTime: "12:30" }, reason: "Conference session", note: "Need one guest lecture", status: "Pending" },
+    { requesterName: "Dr. Meera Iyer", leaveType: "Medical Leave", fromDate: ymd(-5), toDate: ymd(-5), courseName: "Communication", roomNumber: "Seminar Hall B", timings: { startTime: "15:00", endTime: "16:30" }, reason: "Clinic visit", status: "Accepted" },
+  ]) {
+    const [, made] = await LeaveSubstitutionRequest.findOrCreate({ where: { requesterName: item.requesterName, fromDate: item.fromDate, courseName: item.courseName }, defaults: item });
+    if (made) bump("substitutionRequests");
+  }
+
+  for (const item of [
+    { day: "Monday", startTime: "10:00", endTime: "12:00", room: "Placement Office" },
+    { day: "Wednesday", startTime: "15:00", endTime: "17:00", room: "Admin Block 2F" },
+  ]) {
+    const [, made] = await OfficeHour.findOrCreate({ where: { day: item.day, startTime: item.startTime }, defaults: item });
+    if (made) bump("officeHours");
+  }
+  for (const item of [
+    { courseName: "Placement Readiness Lab", courseCode: "PLC401", day: "Tuesday", startTime: "09:30", endTime: "11:00", room: "Lab 2", startDate: ymd(-20), endDate: ymd(70) },
+    { courseName: "Interview Communication", courseCode: "PLC302", day: "Thursday", startTime: "14:00", endTime: "15:30", room: "Seminar Hall B", startDate: ymd(-20), endDate: ymd(70) },
+  ]) {
+    const [, made] = await TimetableEntry.findOrCreate({ where: { courseCode: item.courseCode, day: item.day }, defaults: item });
+    if (made) bump("timetableEntries");
+  }
+  for (const item of [
+    { title: "Google final round briefing", date: ymd(3), startTime: "10:00", endTime: "10:45", location: "Placement Office", attendees: ["rhea.malhotra@google.com"], type: "Recruiter", status: "Scheduled" },
+    { title: "Resume review sprint", date: ymd(5), startTime: "16:00", endTime: "17:00", location: "Seminar Hall A", attendees: ["22cse001@mahindrauniversity.edu.in"], type: "Student", status: "Scheduled" },
+  ]) {
+    const [, made] = await ScheduledMeeting.findOrCreate({ where: { title: item.title, date: item.date }, defaults: item });
+    if (made) bump("scheduledMeetings");
+  }
+  for (const item of [
+    { studentName: "Aarav Sharma", studentEmail: "22cse001@mahindrauniversity.edu.in", courseName: "Placement Readiness Lab", date: ymd(1), startTime: "11:00", endTime: "11:30", reason: "Offer negotiation guidance", status: "Pending" },
+    { studentName: "Priya Nair", studentEmail: "22cse002@mahindrauniversity.edu.in", courseName: "Interview Communication", date: ymd(2), startTime: "15:30", endTime: "16:00", reason: "Mock HR interview", status: "Accepted" },
+  ]) {
+    const [, made] = await MeetingRequest.findOrCreate({ where: { studentEmail: item.studentEmail, date: item.date }, defaults: item });
+    if (made) bump("meetingRequests");
+  }
+  for (const item of [
+    { recipientName: "Rhea Malhotra", recipientEmail: "rhea.malhotra@google.com", date: ymd(4), startTime: "12:00", endTime: "12:30", topic: "Batch shortlist calibration", status: "Pending" },
+    { recipientName: "Anita Deshmukh", recipientEmail: "finance@mahindrauniversity.edu.in", date: ymd(6), startTime: "10:30", endTime: "11:00", topic: "Drive budget reconciliation", status: "Accepted" },
+  ]) {
+    const [, made] = await OutgoingMeetingRequest.findOrCreate({ where: { recipientEmail: item.recipientEmail, date: item.date }, defaults: item });
+    if (made) bump("outgoingRequests");
+  }
+
+  const assetBy = {};
+  for (const item of [
+    { name: "Seminar Hall Projector Kit", category: "AV", totalCount: 6, availableCount: 4, location: "Admin Block Store", condition: "Good" },
+    { name: "Recruiter Interview Laptop", category: "IT", totalCount: 12, availableCount: 9, location: "Placement Lab", condition: "Excellent" },
+    { name: "Campus Shuttle Pass", category: "Transport", totalCount: 30, availableCount: 18, location: "Transport Desk", condition: "Good" },
+  ]) {
+    const [row, made] = await CampusAsset.findOrCreate({ where: { name: item.name }, defaults: item });
+    assetBy[item.name] = row;
+    if (made) bump("assets");
+  }
+  for (const item of [
+    { assetName: "Seminar Hall Projector Kit", quantity: 2, purpose: "Pre-placement talk", fromDate: ymd(4), toDate: ymd(4), status: "Approved", adminRemarks: "Collect by 9 AM" },
+    { assetName: "Recruiter Interview Laptop", quantity: 4, purpose: "Panel interviews", fromDate: ymd(7), toDate: ymd(8), status: "Pending" },
+  ]) {
+    const asset = assetBy[item.assetName];
+    const [, made] = await AssetRequest.findOrCreate({
+      where: { assetId: asset.id, fromDate: item.fromDate, purpose: item.purpose },
+      defaults: { ...item, assetId: asset.id, category: asset.category, cohortId: cohortBy["Placement Readiness 2026 - CSE"].id, postedAt: at(-2) },
+    });
+    if (made) bump("assetRequests");
+  }
+
+  for (const item of [
+    { title: "Projector flicker in Seminar Hall A", category: "AV", issueType: "IT", location: "Seminar Hall A", description: "Display drops during HDMI handoff.", priority: "High", status: "In Progress", submittedBy: "Priya Sharma", submittedByUserId: "placement-coordinator", createdAt: at(-2), adminRemarks: "Technician assigned" },
+    { title: "AC cooling low in interview room", category: "Facilities", issueType: "HVAC", location: "Interview Room 3", description: "Room warms up during afternoon panels.", priority: "Medium", status: "Open", submittedBy: "Priya Sharma", submittedByUserId: "placement-coordinator", createdAt: at(-1) },
+    { title: "Broken visitor chair", category: "Furniture", issueType: "Furniture", location: "Placement Office", description: "One chair needs replacement before recruiter visit.", priority: "Low", status: "Resolved", submittedBy: "Priya Sharma", submittedByUserId: "placement-coordinator", createdAt: at(-10), adminRemarks: "Replaced" },
+  ]) {
+    const [, made] = await MaintenanceRequest.findOrCreate({ where: { title: item.title, location: item.location }, defaults: item });
+    if (made) bump("maintenanceRequests");
+  }
+
+  for (const item of [
+    { title: "Google drive hospitality", category: "Recruiter Visit", amount: 18500, amount_spent: 17940, date: ymd(-3), description: "Lunch and refreshments for panel", status: "Approved", proof_doc_link: "https://docs.example/google-drive-receipt.pdf" },
+    { title: "Resume workshop printing", category: "Training", amount: 6200, amount_spent: 6150, date: ymd(-8), description: "Printed workbooks for CSE cohort", status: "Pending" },
+    { title: "External mock interviewer honorarium", category: "Training", amount: 12000, amount_spent: 0, date: ymd(5), description: "Two mock interview panels", status: "Rejected", adminComments: "Use approved vendor list" },
+  ]) {
+    const [, made] = await Expense.findOrCreate({ where: { title: item.title, date: item.date }, defaults: item });
+    if (made) bump("expenses");
+  }
+  for (const item of [
+    { title: "Recruiter dinner advance", category: "Recruiter Visit", amount: 25000, amount_requested: 25000, date: ymd(2), description: "Advance for visiting panel dinner", status: "Pending" },
+    { title: "Student transport advance", category: "Transport", amount: 18000, amount_requested: 18000, date: ymd(-6), description: "Shuttle advance for offsite assessment", status: "Approved", adminComments: "Settle by Friday" },
+    { title: "Workshop materials advance", category: "Training", amount: 9000, amount_requested: 9000, date: ymd(-20), description: "Stationery and mock test sheets", status: "Settled" },
+  ]) {
+    const [, made] = await Advance.findOrCreate({ where: { title: item.title, date: item.date }, defaults: item });
+    if (made) bump("advances");
+  }
+
+  for (const item of [
+    { title: "Amazon drive reporting time", content: "Shortlisted students must report to Lab 2 by 8:45 AM with college ID.", level: "institution", category: "Drive", priority: "High", is_pinned: true, author: "Placement Cell" },
+    { title: "Resume clinic slots opened", content: "Additional resume review slots are open for final year students this week.", level: "department", category: "Training", priority: "Normal", is_pinned: false, author: "Priya Sharma" },
+    { title: "Finance proof upload reminder", content: "Attach receipts before submitting reimbursement claims for placement events.", level: "institution", category: "Finance", priority: "Medium", is_pinned: false, author: "Finance Office" },
+  ]) {
+    const [, made] = await Bulletin.findOrCreate({ where: { title: item.title }, defaults: item });
+    if (made) bump("bulletins");
+  }
+  for (const item of [
+    { cohortId: cohortBy["Placement Readiness 2026 - CSE"].id, title: "Mock interview roster", message: "Panel allocations are posted. Please check your slot before 6 PM.", priority: "High", author_name: "Placement Coordinator" },
+    { cohortId: cohortBy["Internship Prep 2027"].id, title: "Aptitude baseline test", message: "The baseline test opens tomorrow at 10 AM.", priority: "Normal", author_name: "Placement Coordinator" },
+  ]) {
+    const [, made] = await CohortAnnouncement.findOrCreate({ where: { cohortId: item.cohortId, title: item.title }, defaults: { ...item, content: item.message } });
+    if (made) bump("cohortAnnouncements");
   }
 
   const summary = Object.entries(n).map(([k, v]) => `${v} ${k}`).join(", ");
