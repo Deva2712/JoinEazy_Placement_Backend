@@ -60,6 +60,24 @@ export const crudService = (Model, options = {}) => {
   };
 };
 
+/**
+ * A list controller that narrows the result to the caller when the caller is a
+ * student, and returns everything when they are staff.
+ *
+ * Needed because the frontend reads the SAME path with two meanings: a student
+ * GETs /placement/offers to see their own offers, while the coordinator GETs
+ * /placement/coord/offers (the same router) to see all of them. Without this a
+ * student listing offers or interviews reads the whole cohort's — every other
+ * student's employer and CTC.
+ *
+ * @param column  the model's owning-student column (student_id everywhere so far)
+ */
+export const ownerScopedList = (service, column = "student_id") => async (req, res) => {
+  const query = { ...req.query };
+  if (req.user?.role === "student") query[column] = req.user.id;
+  res.json({ success: true, data: await service.list(query) });
+};
+
 /** Controller wrappers over a crudService — keeps controllers logic-free. */
 export const crudController = (service) => ({
   list:   async (req, res) => res.json({ success: true, data: await service.list(req.query) }),

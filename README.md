@@ -28,7 +28,7 @@ ERP issues and owns no user accounts of its own.
 
 | Module | Base path | Owns |
 |---|---|---|
-| Overview | `/placement/overview`, `/coord/overview`, `/hod/overview` | dashboards (derived, no tables) |
+| Overview | `/placement/overview`, `/coord/*`, `/prof/*`, `/hod/*`, `/history/*` | the four role dashboards (derived, no tables) |
 | Companies | `/placement/companies` | companies, recruiter contacts, hiring history |
 | MOUs | `/placement/mous` | agreements, campus visits |
 | Drives | `/placement/jobs`, `/placement/drives` | drives + selection rounds |
@@ -36,7 +36,7 @@ ERP issues and owns no user accounts of its own.
 | Interviews | `/placement/interviews` | scheduled slots |
 | Offers | `/placement/offers` | offers, acceptance |
 | Students | `/placement/students` | placement roster, student profiles |
-| Training | `/placement/training` | courses, enrolments, sessions, attendance |
+| Training | `/placement/training` | programs, enrolments, sessions, attendance, tests, scores |
 | Assessments | `/placement/assessments` | tests and scores |
 | Tasks | `/placement/tasks` | coordinator to-dos, off-campus records |
 
@@ -55,12 +55,39 @@ are the same record.
 - Async route handlers **must** be wrapped in `asyncHandler`. A bare `async`
   handler that rejects escapes Express 4 and takes the process down.
 
-## Authorisation
+## The four roles
 
-`PLACEMENT_STAFF = ["admin", "placement_coordinator", "hod", "dean"]` may write.
-Reads are open to any authenticated user; each service still scopes results by
-the caller where it matters. `professor` is deliberately excluded — professors
-view drives and their mentees but do not run the placement cell.
+These are the roles the placement frontend actually ships — read off its route
+guards in `Placement-Frontend/src/App.jsx`. The strings must match exactly:
+`ProtectedRoute` compares them against `user.role` verbatim.
+
+| Role | Frontend route | Reads | Writes |
+|---|---|---|---|
+| `student` | `/placement` | own applications, offers, training, open drives | own application, profile, offer response |
+| `placement_coordinator` | `/placement-coord` | everything, unscoped | **everything** — the only writer of placement data |
+| `professor` | `/placement-prof` | placement stats for **their own branch** | training attendance + scores, for programs they instruct |
+| `hod` | `/placement-hod` | placement stats for **their department's branches** | nothing — read-only |
+
+Not here on purpose: `admin` and `dean` (no placement screen exists for either,
+so write access would open a door no UI opens) and `hr` (no placement route).
+
+**Branch scope comes from the token, never the query string.** `branchScope`
+resolves what a caller may see from their JWT claims (`branch` for a professor,
+`branches` for an HoD) and puts it on `req.scope`; `?branch=` can only *narrow*
+within that, never widen it. A prof or HoD token carrying no branch claim is
+rejected with 403 rather than defaulting to the whole cohort.
+
+Training is the single exception to "coordinator is the only writer": a
+professor marks attendance and records scores for programs they instruct. The
+route guard (`TRAINING_WRITE`) gets them through the door;
+`assertMayWriteCourse` then checks the program's `instructor_id` is theirs.
+
+Two checks cover this — run them after touching `auth.middleware.js`:
+
+```bash
+node test_roles.js    # the guard logic, no database needed
+node test_routes.js   # the same rules over real HTTP; needs a throwaway DB
+```
 
 ## Drive lifecycle
 

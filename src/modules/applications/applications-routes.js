@@ -1,6 +1,6 @@
 // src/modules/applications/applications-routes.js
 import express from "express";
-import { protect, authorize, PLACEMENT_STAFF } from "../../middleware/auth.middleware.js";
+import { protect, authorize, COORD_ONLY } from "../../middleware/auth.middleware.js";
 import * as ctrl from "./applications-controller.js";
 
 const router = express.Router();
@@ -8,11 +8,11 @@ router.use(protect);
 
 // "mine" and "status" are literals — declared before /:id.
 router.get("/mine",    ctrl.mine);
-router.put("/status",  authorize(...PLACEMENT_STAFF), ctrl.setStatusBulk);
+router.put("/status",  authorize(...COORD_ONLY), ctrl.setStatusBulk);
 
-router.get("/",           authorize(...PLACEMENT_STAFF), ctrl.list);
+router.get("/",           authorize(...COORD_ONLY), ctrl.list);
 router.get("/:id",        ctrl.get);
-router.put("/:id/status", authorize(...PLACEMENT_STAFF), ctrl.setStatus);
+router.put("/:id/status", authorize(...COORD_ONLY), ctrl.setStatus);
 router.delete("/:id",     ctrl.remove);   // a student may withdraw
 
 export default router;

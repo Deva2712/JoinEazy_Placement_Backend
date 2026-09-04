@@ -1,9 +1,10 @@
 // Placement-Backend — src/app.js
 //
-// Composition root for the Placement service. Backs the placement modules of
-// Placement-Frontend: student job board and applications, the coordinator's
-// drive pipeline (rounds → outcomes → offers), company/MOU relationships,
-// training, assessments and the HOD's departmental view.
+// Composition root for the Placement service. Backs the four role workspaces of
+// Placement-Frontend: the student job board and applications, the coordinator's
+// drive pipeline (rounds → outcomes → offers) plus companies/MOUs, the
+// professor's branch view and training programs, and the HoD's departmental
+// read-only view. See README "The four roles" for who may do what.
 //
 // Paths mirror what the frontend already calls (api/services/placement.service.js),
 // so switching it from mocks to this service is a base-URL change, not a rewrite.
@@ -23,6 +24,7 @@ import assessmentsRoutes  from "./modules/assessments/assessments-routes.js";
 import tasksRoutes        from "./modules/tasks/tasks-routes.js";
 import overviewRoutes     from "./modules/overview/overview-routes.js";
 
+import { protect, authorize, COORD_ONLY } from "./middleware/auth.middleware.js";
 import { errorHandler }  from "./middleware/error.middleware.js";
 import { requestLogger } from "./middleware/logger.middleware.js";
 
@@ -62,9 +64,9 @@ app.use(express.urlencoded({ extended: true }));
 app.use(requestLogger);
 
 // ─── Placement modules ───────────────────────────────────────────────────────
-// Dashboards first: they declare literal paths (/overview, /coord/overview,
-// /hod/overview, /history/batch-totals) that must not be captured by a
-// parameterised route mounted at the same prefix.
+// Dashboards first: they declare literal paths (/overview, /coord/*, /prof/*,
+// /hod/*, /history/*) that must not be captured by a parameterised route
+// mounted at the same prefix.
 app.use("/api/v1/placement", overviewRoutes);
 
 app.use("/api/v1/placement/companies",    companiesRoutes);
@@ -81,6 +83,16 @@ app.use("/api/v1/placement/students",     studentsRoutes);
 app.use("/api/v1/placement/training",     trainingRoutes);
 app.use("/api/v1/placement/assessments",  assessmentsRoutes);
 app.use("/api/v1/placement/tasks",        tasksRoutes);
+
+// The coordinator's list views call /coord/<resource> where a student calls the
+// bare resource (placement.service.js: getAllApplications, getInterviewSlotsFor
+// Coord, getAllOffers). Same routers reused — but gated here, because /coord/*
+// means "the whole cohort, unscoped" and only the coordinator may see that. The
+// bare paths stay open and narrow themselves per caller (ownerScopedList).
+const coordOnly = [protect, authorize(...COORD_ONLY)];
+app.use("/api/v1/placement/coord/applications", coordOnly, applicationsRoutes);
+app.use("/api/v1/placement/coord/interviews",   coordOnly, interviewsRoutes);
+app.use("/api/v1/placement/coord/offers",       coordOnly, offersRoutes);
 
 app.get("/health", (req, res) =>
   res.status(200).json({ status: "ok", service: "placement-api", timestamp: new Date().toISOString() })
