@@ -37,6 +37,19 @@ import advancesRoutes from "./modules/advances/advances-routes.js";
 import bulletinsRoutes from "./modules/bulletins/bulletins-routes.js";
 import userRoutes from "./modules/user/user-routes.js";
 import cohortRoutes from "./modules/cohort/cohort-routes.js";
+import cohortExtrasRoutes from "./modules/cohort-extras/cohort-extras-routes.js";
+import cohortAssignmentsRoutes from "./modules/cohort-assignments/cohort-assignments-routes.js";
+import cohortAssignmentGradeRoutes from "./modules/cohort-assignments/cohort-assignments-grade-routes.js";
+import cohortMembersRoutes from "./modules/cohort-members/cohort-members-routes.js";
+import cohortResourcesRoutes from "./modules/cohort-resources/cohort-resources-routes.js";
+import cohortMaterialsRoutes from "./modules/cohort-materials/cohort-materials-routes.js";
+import cohortMeetingsRoutes from "./modules/cohort-meetings/cohort-meetings-routes.js";
+import cohortDiscussionsRoutes from "./modules/cohort-discussions/cohort-discussions-routes.js";
+import cohortAttendanceRoutes from "./modules/cohort-attendance/cohort-attendance-routes.js";
+import registrarRoutes from "./modules/registrar/registrar-routes.js";
+import lorRoutes from "./modules/registrar/lor-routes.js";
+import libraryRoutes from "./modules/library/library-routes.js";
+import financeRoutes from "./modules/finance/finance-routes.js";
 
 import { errorHandler } from "./middleware/error.middleware.js";
 import { UPLOAD_DIR } from "./middleware/upload.middleware.js";
@@ -96,7 +109,21 @@ app.use("/api/v1/expenses", expensesRoutes);
 app.use("/api/v1/advances", advancesRoutes);
 app.use("/api/v1/bulletins", bulletinsRoutes);
 app.use("/api/v1/user", userRoutes);
+app.use("/api/v1/cohort/assignments", cohortAssignmentGradeRoutes);
+app.use("/api/v1/cohort/:cohortId/assignments", cohortAssignmentsRoutes);
+app.use("/api/v1/cohort/:cohortId/members", cohortMembersRoutes);
+app.use("/api/v1/cohort/:cohortId/resources", cohortResourcesRoutes);
+app.use("/api/v1/cohort/:cohortId/materials", cohortMaterialsRoutes);
+app.use("/api/v1/cohort/:cohortId/meetings", cohortMeetingsRoutes);
+app.use("/api/v1/cohort/:cohortId/discussions", cohortDiscussionsRoutes);
+app.use("/api/v1/cohort", cohortExtrasRoutes);
+app.use("/api/v1/cohort/:cohortId", cohortMeetingsRoutes);
 app.use("/api/v1/cohort", cohortRoutes);
+app.use("/api/v1", cohortAttendanceRoutes);
+app.use("/api/v1/registrar", registrarRoutes);
+app.use("/api/v1/lor", lorRoutes);
+app.use("/api/v1/library", libraryRoutes);
+app.use("/api/v1/finance", financeRoutes);
 
 // ─── Placement modules ───────────────────────────────────────────────────────
 // Dashboards first: they declare literal paths (/overview, /coord/overview,

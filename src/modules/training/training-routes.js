@@ -41,6 +41,12 @@ router.get("/enrollments",  ctrl.listEnrollments);
 router.post("/enrollments", ctrl.enroll);
 
 // Courses — the router's root resource.
+router.get("/courses",       ctrl.list);
+router.post("/courses",      staff, ctrl.create);
+router.get("/courses/:id",   ctrl.get);
+router.patch("/courses/:id", staff, ctrl.update);
+router.delete("/courses/:id", staff, ctrl.remove);
+
 router.get("/",        ctrl.list);
 router.post("/",       staff, ctrl.create);
 router.get("/:id",     ctrl.get);
