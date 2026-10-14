@@ -53,12 +53,12 @@ export const service = {
     }
 
     const [applicationRows, offers, profile] = await Promise.all([
-      Application.findAll({ where: { studentId: roster.id }, order: [["appliedAt", "DESC"]] }),
-      Offer.findAll({ where: { studentId: roster.id } }),
-      StudentPlacementProfile.findOne({ where: { studentId: roster.id } }),
+      Application.findAll({ where: { studentId: roster.userId }, order: [["appliedAt", "DESC"]] }),
+      Offer.findAll({ where: { studentId: roster.userId } }),
+      StudentPlacementProfile.findOne({ where: { studentId: roster.userId } }),
     ]);
     const upcoming = await InterviewSlot.count({
-      where: { studentId: roster.id, status: "Scheduled", scheduledAt: { [Op.gt]: new Date() } },
+      where: { studentId: roster.userId, status: "Scheduled", scheduledAt: { [Op.gt]: new Date() } },
     });
 
     return {

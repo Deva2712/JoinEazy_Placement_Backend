@@ -51,7 +51,7 @@ export const service = {
     const roster = await PlacementStudent.findOne({ where: { userId } });
     if (!roster) return [];
     const rows = await Application.findAll({
-      where: { studentId: roster.id },
+      where: { studentId: roster.userId },
       include: INCLUDE,
       order: [["appliedAt", "DESC"]],
     });
@@ -69,7 +69,7 @@ export const service = {
       badRequest("You are not on the placement roster yet — ask the placement cell to add you.");
     }
 
-    const existing = await Application.findOne({ where: { jobId: jobId, studentId: roster.id } });
+    const existing = await Application.findOne({ where: { jobId: jobId, studentId: roster.userId } });
     if (existing) return { application: existing.toJSON(), alreadyApplied: true };
 
     if (job.minCgpa != null && roster.cgpa != null && roster.cgpa < job.minCgpa) {
@@ -82,7 +82,7 @@ export const service = {
 
     const application = await Application.create({
       jobId: jobId,
-      studentId: roster.id,
+      studentId: roster.userId,
       studentName: roster.name || student.name || null,
       studentRoll: roster.rollNo || null,
       resumeUrl: student.resumeUrl || null,
@@ -101,7 +101,7 @@ export const service = {
     // the same moment and is still accepted so existing rows keep working.
     if (status === "Placed" || status === "Accepted") {
       const offer = await Offer.findOne({ where: { applicationId: applicationId } });
-      const roster = await PlacementStudent.findByPk(app.studentId);
+      const roster = await PlacementStudent.findOne({ where: { userId: app.studentId } });
       if (roster) {
         await roster.update({
           placementStatus: "Placed",

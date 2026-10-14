@@ -18,19 +18,6 @@ import { PlacementStudent } from "../students/students-model.js";
  * instructor from a list when scheduling, and no other table here can supply
  * one. Kept deliberately thin: a name/email directory, not an identity record.
  */
-const TrainingInstructor = sequelize.define("TrainingInstructor", {
-  id:         { type: DataTypes.UUID, defaultValue: DataTypes.UUIDV4, primaryKey: true },
-  name:       { type: DataTypes.STRING, allowNull: false },
-  email:      { type: DataTypes.STRING, allowNull: true },
-  role:       { type: DataTypes.STRING, allowNull: true, defaultValue: "professor" },
-  department: { type: DataTypes.STRING, allowNull: true },
-}, {
-  tableName: "placement_training_instructors",
-  timestamps: true,
-  underscored: true,
-  indexes: [{ fields: ["email"] }],
-});
-
 /** A pre-placement training course / programme (DSA, Aptitude, Soft Skills …). */
 const TrainingCourse = sequelize.define("TrainingCourse", {
   id:               { type: DataTypes.UUID, defaultValue: DataTypes.UUIDV4, primaryKey: true },
@@ -83,7 +70,7 @@ const TrainingSession = sequelize.define("TrainingSession", {
   category:         { type: DataTypes.STRING, allowNull: true },   // free-form programme grouping
   title:            { type: DataTypes.STRING, allowNull: true },
   instructor:       { type: DataTypes.STRING, allowNull: true },
-  instructorId:     { type: DataTypes.STRING, allowNull: true },
+  instructorId:     { type: DataTypes.UUID, allowNull: true },
   // Named `date` to match what the UI sends; the column is scheduled_at.
   date:             { type: DataTypes.DATE, allowNull: true, field: "scheduled_at" },
   endDate:          { type: DataTypes.DATE, allowNull: true },
@@ -148,6 +135,7 @@ const TrainingTest = sequelize.define("TrainingTest", {
   testNumber:  { type: DataTypes.INTEGER, allowNull: true },
   title:       { type: DataTypes.STRING, allowNull: false },
   description: { type: DataTypes.TEXT, allowNull: true },
+  instructorId:{ type: DataTypes.UUID, allowNull: true },
   testLink:    { type: DataTypes.STRING, allowNull: true },
   maxScore:    { type: DataTypes.FLOAT, allowNull: true },
   date:        { type: DataTypes.DATEONLY, allowNull: true },
@@ -178,14 +166,18 @@ TrainingScore.belongsTo(TrainingTest, { foreignKey: "testId", as: "test" });
 
 TrainingCourse.hasMany(CourseEnrollment, { foreignKey: "courseId", as: "enrollments", onDelete: "CASCADE" });
 CourseEnrollment.belongsTo(TrainingCourse, { foreignKey: "courseId", as: "course" });
-PlacementStudent.hasMany(CourseEnrollment, { foreignKey: "studentId", as: "enrollments", onDelete: "CASCADE" });
-CourseEnrollment.belongsTo(PlacementStudent, { foreignKey: "studentId", as: "student" });
+PlacementStudent.hasMany(CourseEnrollment, { foreignKey: "studentId", sourceKey: "userId", as: "enrollments", onDelete: "CASCADE", constraints: false });
+CourseEnrollment.belongsTo(PlacementStudent, { foreignKey: "studentId", targetKey: "userId", as: "student", constraints: false });
 TrainingCourse.hasMany(TrainingSession, { foreignKey: "courseId", as: "sessions", onDelete: "CASCADE" });
 TrainingSession.belongsTo(TrainingCourse, { foreignKey: "courseId" });
 TrainingSession.hasMany(TrainingAttendance, { foreignKey: "sessionId", as: "attendance", onDelete: "CASCADE" });
 TrainingAttendance.belongsTo(TrainingSession, { foreignKey: "sessionId" });
+PlacementStudent.hasMany(TrainingAttendance, { foreignKey: "studentId", sourceKey: "userId", as: "trainingAttendance", constraints: false });
+TrainingAttendance.belongsTo(PlacementStudent, { foreignKey: "studentId", targetKey: "userId", as: "student", constraints: false });
+PlacementStudent.hasMany(TrainingScore, { foreignKey: "studentId", sourceKey: "userId", as: "trainingScores", constraints: false });
+TrainingScore.belongsTo(PlacementStudent, { foreignKey: "studentId", targetKey: "userId", as: "student", constraints: false });
 
 export {
-  TrainingInstructor, TrainingCourse, CourseEnrollment,
-  TrainingSession, TrainingAttendance, TrainingTest, TrainingScore,
+  TrainingCourse, CourseEnrollment, TrainingSession, TrainingAttendance,
+  TrainingTest, TrainingScore,
 };

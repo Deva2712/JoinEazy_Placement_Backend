@@ -54,12 +54,12 @@ const PATCHABLE = ["linkedinUrl", "githubUrl", "skills", "certifications", "proj
 export const service = {
   get: async (userId) => {
     const roster = await rosterFor(userId);
-    return toApi(await profileFor(roster.id));
+    return toApi(await profileFor(roster.userId));
   },
 
   update: async (userId, patch = {}) => {
     const roster = await rosterFor(userId);
-    const profile = await profileFor(roster.id);
+    const profile = await profileFor(roster.userId);
     const attrs = Object.fromEntries(
       Object.entries(patch).filter(([k]) => PATCHABLE.includes(k))
     );
@@ -76,7 +76,7 @@ export const service = {
   /** Store an uploaded file's URL against the profile. */
   setDocument: async (userId, field, url) => {
     const roster = await rosterFor(userId);
-    const profile = await profileFor(roster.id);
+    const profile = await profileFor(roster.userId);
     await profile.update({ [field]: url });
     return { [field]: url };
   },

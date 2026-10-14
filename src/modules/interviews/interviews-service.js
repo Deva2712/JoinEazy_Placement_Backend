@@ -59,7 +59,7 @@ const createSlot = async (payload = {}) => {
     studentId: app.studentId,
     studentName: app.studentName,
     studentRollNo: app.studentRoll
-      ?? (await PlacementStudent.findByPk(app.studentId))?.rollNo
+      ?? (await PlacementStudent.findOne({ where: { userId: app.studentId } }))?.rollNo
       ?? null,
     round: payload.round || await nextRound(applicationId),
     // Ties the slot to a specific selection round when scheduled from Manage

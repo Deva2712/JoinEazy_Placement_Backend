@@ -8,6 +8,8 @@ router.use(protect);
 
 // Reads are open to any authenticated user; writes are placement staff.
 router.get("/",        ctrl.list);
+// The roster the coordinator screens join against; every seeded student is current.
+router.get("/current", ctrl.list);
 router.get("/:id",     ctrl.get);
 router.post("/",       authorize(...PLACEMENT_STAFF), ctrl.create);
 // Literal path before the parameterised one, or "/bulk" is read as an :id.

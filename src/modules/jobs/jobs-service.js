@@ -79,6 +79,16 @@ const assessmentsFor = async (jobIds) => {
   return Object.fromEntries(tests.map((t) => [t.job_id, t]));
 };
 
+const resolveStudentKey = async (studentId) => {
+  if (!studentId) return null;
+  const raw = String(studentId);
+  const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(raw);
+  const roster = isUuid
+    ? await PlacementStudent.findOne({ where: { userId: raw } })
+    : await PlacementStudent.findOne({ where: { rollNo: raw } });
+  return roster?.userId ?? raw;
+};
+
 /** Strip the frontend-only aliases and fold them into real columns. */
 const fromApi = (data = {}) => {
   const { company, cgpa, selectionRounds, ...rest } = data;
@@ -197,12 +207,12 @@ export const service = {
       const roster = await PlacementStudent.findOne({ where: { rollNo } });
       if (!roster) { skipped.push({ rollNo, reason: "Unknown rollNo — not on the roster" }); continue; }
 
-      const existing = await Application.findOne({ where: { jobId, studentId: roster.id } });
+      const existing = await Application.findOne({ where: { jobId, studentId: roster.userId } });
       if (existing) { skipped.push({ rollNo, reason: "Already applied to this drive" }); continue; }
 
       await Application.create({
         jobId,
-        studentId: roster.id,
+        studentId: roster.userId,
         studentName: row.name || roster.name,
         studentRoll: rollNo,
         status: row.status || "Applied",
@@ -248,10 +258,11 @@ export const service = {
 
     const written = [];
     for (const o of outcomes) {
+      const studentId = await resolveStudentKey(o.studentId);
       const [row] = await RoundResult.findOrCreate({
-        where: { roundId: roundId, studentId: o.studentId },
+        where: { roundId: roundId, studentId },
         defaults: {
-          jobId: jobId, roundId: roundId, studentId: o.studentId,
+          jobId: jobId, roundId: roundId, studentId,
           applicationId: o.applicationId || null,
         },
       });
@@ -267,7 +278,7 @@ export const service = {
       // Keep the application's status in step with the round outcome.
       const app = o.applicationId
         ? await Application.findByPk(o.applicationId)
-        : await Application.findOne({ where: { jobId: jobId, studentId: o.studentId } });
+        : await Application.findOne({ where: { jobId: jobId, studentId } });
       if (app) {
         if (o.status === "Rejected") await app.update({ status: "Rejected" });
         else if (o.status === "Cleared") await app.update({ currentRound: round.sequence });

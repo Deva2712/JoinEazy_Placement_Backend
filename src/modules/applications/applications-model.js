@@ -9,7 +9,7 @@ const Application = sequelize.define("Application", {
   jobId:       { type: DataTypes.UUID, allowNull: false },
   studentId:   { type: DataTypes.UUID, allowNull: false },
   studentName: { type: DataTypes.STRING, allowNull: true },
-  studentRoll: { type: DataTypes.STRING, allowNull: true },
+  studentRoll: { type: DataTypes.STRING, allowNull: true, field: "student_roll_no" },
   // The first eight values are exactly APPLICATION_STATUSES from the frontend's
   // placementCoordConstants.js — the ATS board, funnel and transition graph all
   // branch on those literals, so they are the vocabulary of record. The rest are
@@ -60,8 +60,8 @@ const RoundResult = sequelize.define("RoundResult", {
 
 Job.hasMany(Application, { foreignKey: "jobId", as: "applications", onDelete: "CASCADE" });
 Application.belongsTo(Job, { foreignKey: "jobId", as: "job" });
-PlacementStudent.hasMany(Application, { foreignKey: "studentId", as: "applications", onDelete: "CASCADE" });
-Application.belongsTo(PlacementStudent, { foreignKey: "studentId", as: "student" });
+PlacementStudent.hasMany(Application, { foreignKey: "studentId", sourceKey: "userId", as: "applications", onDelete: "CASCADE", constraints: false });
+Application.belongsTo(PlacementStudent, { foreignKey: "studentId", targetKey: "userId", as: "student", constraints: false });
 Application.hasMany(RoundResult, { foreignKey: "applicationId", as: "roundResults" });
 RoundResult.belongsTo(Application, { foreignKey: "applicationId" });
 DriveRound.hasMany(RoundResult, { foreignKey: "roundId", as: "results", onDelete: "CASCADE" });

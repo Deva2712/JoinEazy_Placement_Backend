@@ -28,7 +28,7 @@ const resolveStudent = async (payload) => {
   if (!raw) badRequest("Student is required");
   const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(raw));
   const roster = isUuid
-    ? await PlacementStudent.findByPk(raw)
+    ? await PlacementStudent.findOne({ where: { userId: raw } })
     : await PlacementStudent.findOne({ where: { rollNo: String(raw) } });
   if (!roster) badRequest(`Student "${raw}" is not on the placement roster.`);
   return roster;
@@ -39,6 +39,8 @@ const toApi = (row) => ({
   ...row,
   studentId: row.studentRollNo ?? row.studentId,
   company: row.companyName ?? null,
+  ctc: row.ctcValue ?? null,
+  package: row.ctc ?? null,
 });
 
 /** Map the modal's payload onto columns. */
@@ -46,7 +48,7 @@ const toAttributes = (payload, roster) => {
   const companyName = payload.company ?? payload.companyName;
   const verified = payload.verified === true;
   return {
-    studentId: roster.id,
+    studentId: roster.userId,
     studentRollNo: roster.rollNo,
     studentName: payload.studentName ?? roster.name,
     studentBranch: payload.studentBranch ?? roster.branch,
@@ -54,10 +56,10 @@ const toAttributes = (payload, roster) => {
     role: payload.role ?? null,
     type: payload.type ?? null,
     source: payload.source ?? null,
-    package: payload.package ?? null,
+    ctc: payload.package ?? payload.ctc ?? null,
     // Numeric mirror of `package`, so analytics can aggregate off-campus
     // placements alongside on-campus offers.
-    ctc: payload.ctc ?? parseCtc(payload.package),
+    ctcValue: payload.ctcValue ?? parseCtc(payload.package ?? payload.ctc),
     location: payload.location ?? null,
     sector: payload.sector ?? null,
     appliedAt: payload.appliedAt ?? null,
@@ -94,8 +96,8 @@ const ensurePpoOffer = async (record) => {
     companyId: null,
     companyName: record.companyName,
     role: record.role,
-    ctc: record.package || "—",
-    ctcValue: record.ctc ?? parseCtc(record.package),
+    ctc: record.ctc || "—",
+    ctcValue: record.ctcValue ?? parseCtc(record.ctc),
     location: record.location,
     sector: record.sector,
     ppo: true,
@@ -127,8 +129,8 @@ export const service = {
     // otherwise a partial patch would blank the linkage.
     const roster = (patch.studentId || patch.rollNo)
       ? await resolveStudent(patch)
-      : await PlacementStudent.findByPk(record.studentId);
-    const attrs = toAttributes({ ...record.toJSON(), ...patch }, roster || { id: record.studentId, rollNo: record.studentRollNo, name: record.studentName, branch: record.studentBranch });
+      : await PlacementStudent.findOne({ where: { userId: record.studentId } });
+    const attrs = toAttributes({ ...record.toJSON(), ...patch }, roster || { userId: record.studentId, rollNo: record.studentRollNo, name: record.studentName, branch: record.studentBranch });
     await record.update(attrs);
     if (patch.convertToPpo) await ensurePpoOffer(record);
     return toApi(record.toJSON());

@@ -8,7 +8,7 @@
     "start": "node index.js",
     "dev": "nodemon index.js",
     "db:migrate": "node src/database/migrate.js",
-    "db:seed": "node src/database/seed.js",
+    "db:seed": "node src/database/seed-unified.js",
     "db:setup": "npm run db:migrate && npm run db:seed"
   },
   "dependencies": {

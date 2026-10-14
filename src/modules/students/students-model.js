@@ -11,7 +11,7 @@ const PlacementStudent = sequelize.define("PlacementStudent", {
   id:        { type: DataTypes.UUID, defaultValue: DataTypes.UUIDV4, primaryKey: true },
   // The main ERP's user id, when the student has an account. Nullable so a
   // roster imported from a spreadsheet is still usable before accounts exist.
-  userId:    { type: DataTypes.UUID, allowNull: true },
+  userId:    { type: DataTypes.UUID, allowNull: false, unique: true },
   rollNo:    { type: DataTypes.STRING, allowNull: false },
   name:      { type: DataTypes.STRING, allowNull: false },
   email:     { type: DataTypes.STRING, allowNull: true },
@@ -44,6 +44,7 @@ const PlacementStudent = sequelize.define("PlacementStudent", {
   underscored: true,
   indexes: [
     { unique: true, fields: ["roll_no"] },
+    { unique: true, fields: ["user_id"] },
     { fields: ["batch_year"] }, { fields: ["branch"] }, { fields: ["placement_status"] },
   ],
 });
@@ -81,7 +82,7 @@ const StudentPlacementProfile = sequelize.define("StudentPlacementProfile", {
   indexes: [{ unique: true, fields: ["student_id"] }],
 });
 
-PlacementStudent.hasOne(StudentPlacementProfile, { foreignKey: "studentId", as: "profile", onDelete: "CASCADE" });
-StudentPlacementProfile.belongsTo(PlacementStudent, { foreignKey: "studentId" });
+PlacementStudent.hasOne(StudentPlacementProfile, { foreignKey: "studentId", sourceKey: "userId", as: "profile", onDelete: "CASCADE", constraints: false });
+StudentPlacementProfile.belongsTo(PlacementStudent, { foreignKey: "studentId", targetKey: "userId", as: "student", constraints: false });
 
 export { PlacementStudent, StudentPlacementProfile };

@@ -1,19 +1,20 @@
 services:
-  postgres:
-    image: postgres:16-alpine
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres123
-      POSTGRES_DB: joineazy_placement
-    ports:
-      - "5435:5432"
-    volumes:
-      - placement_pg_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
+  # Local placement-only DB disabled for unified-db development.
+  # postgres:
+  #   image: postgres:16-alpine
+  #   environment:
+  #     POSTGRES_USER: postgres
+  #     POSTGRES_PASSWORD: postgres123
+  #     POSTGRES_DB: joineazy_placement
+  #   ports:
+  #     - "5435:5432"
+  #   volumes:
+  #     - placement_pg_data:/var/lib/postgresql/data
+  #   healthcheck:
+  #     test: ["CMD-SHELL", "pg_isready -U postgres"]
+  #     interval: 5s
+  #     timeout: 5s
+  #     retries: 5
 
   api:
     build:
@@ -24,15 +25,22 @@ services:
     env_file:
       - .env
     environment:
-      DATABASE_HOST: postgres
+      DATABASE_HOST: host.docker.internal
+      DATABASE_PORT: 5436
+      DATABASE_NAME: joineazy_unified
+      DATABASE_USERNAME: joineazy_user
+      DATABASE_PASSWORD: joineazy_pass
+      DB_SYNC: alter
+      AUTO_SEED: "true"
     volumes:
       - .:/app
       - /app/node_modules
       - ./logs:/app/logs
-    depends_on:
-      postgres:
-        condition: service_healthy
+    # Unified DB is started from C:\Users\Joy\Desktop\100x\unified-db.
+    # depends_on:
+    #   postgres:
+    #     condition: service_healthy
     command: npm run dev
 
-volumes:
-  placement_pg_data:
+# volumes:
+#   placement_pg_data:

@@ -16,7 +16,7 @@ export const service = {
     const isMatch = await user.comparePassword(password);
     if (!isMatch) unauthorized("Invalid email or password");
 
-    const name = `${user.first_name || ""} ${user.last_name || ""}`.trim() || user.email;
+    const name = user.name || user.email;
     const token = generateToken(user.id, user.role, name, user.email);
     const userJson = user.toJSON();
     delete userJson.password;

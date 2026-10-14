@@ -56,16 +56,25 @@ const Offer = sequelize.define("Offer", {
   letterFileName:{ type: DataTypes.STRING, allowNull: true },
   letterSentAt:  { type: DataTypes.DATE, allowNull: true },
   status:        { type: DataTypes.ENUM("Pending", "Accepted", "Rejected", "Withdrawn"), defaultValue: "Pending" },
+  acceptedAt:    { type: DataTypes.DATE, allowNull: true },
 }, {
   tableName: "placement_offers",
   timestamps: true,
   underscored: true,
   indexes: [{ fields: ["student_id"] }, { fields: ["company_id"] }, { fields: ["status"] }],
+  hooks: {
+    beforeSave: (offer) => {
+      if (offer.changed("status")) {
+        if (offer.status === "Accepted" && !offer.acceptedAt) offer.acceptedAt = new Date();
+        if (offer.status !== "Accepted") offer.acceptedAt = null;
+      }
+    },
+  },
 });
 
 Application.hasMany(Offer, { foreignKey: "applicationId", as: "offers" });
 Offer.belongsTo(Application, { foreignKey: "applicationId", as: "application" });
-PlacementStudent.hasMany(Offer, { foreignKey: "studentId", as: "offers" });
-Offer.belongsTo(PlacementStudent, { foreignKey: "studentId", as: "student" });
+PlacementStudent.hasMany(Offer, { foreignKey: "studentId", sourceKey: "userId", as: "offers", constraints: false });
+Offer.belongsTo(PlacementStudent, { foreignKey: "studentId", targetKey: "userId", as: "student", constraints: false });
 
 export { Offer };

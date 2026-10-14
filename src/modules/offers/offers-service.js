@@ -48,7 +48,7 @@ export const parseCtc = (raw) => {
 const resolveStudent = async (studentId) => {
   if (!studentId) badRequest("studentId is required");
   const byPk = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(studentId))
-    ? await PlacementStudent.findByPk(studentId)
+    ? await PlacementStudent.findOne({ where: { userId: studentId } })
     : null;
   const roster = byPk || await PlacementStudent.findOne({ where: { rollNo: String(studentId) } });
   if (!roster) badRequest(`No student on the placement roster matches "${studentId}".`);
@@ -58,7 +58,7 @@ const resolveStudent = async (studentId) => {
 /** Shape one incoming payload into model attributes. */
 const toAttributes = (data, roster) => ({
   ...data,
-  studentId: roster.id,
+  studentId: roster.userId,
   studentName:   data.studentName   ?? roster.name,
   studentRollNo: data.studentRollNo ?? roster.rollNo,
   studentBranch: data.studentBranch ?? roster.branch,
@@ -89,7 +89,7 @@ const assertNoLiveDuplicate = async ({ studentId, companyId, role }, excludeId =
  * Accepting places the student; withdrawing/rejecting un-places them.
  */
 const cascadeStatus = async (offer, prevStatus) => {
-  const roster = await PlacementStudent.findByPk(offer.studentId);
+  const roster = await PlacementStudent.findOne({ where: { userId: offer.studentId } });
   const app = offer.applicationId ? await Application.findByPk(offer.applicationId) : null;
 
   if (offer.status === "Accepted" && prevStatus !== "Accepted") {
@@ -169,6 +169,8 @@ export const service = {
       Object.assign(patch, toAttributes(data, roster));
     }
     if ("ctc" in data) patch.ctcValue = parseCtc(data.ctc);
+    if (patch.status === "Accepted") patch.acceptedAt = row.acceptedAt || new Date();
+    if (patch.status && patch.status !== "Accepted") patch.acceptedAt = null;
     // Attaching the letter is what makes an offer "received" by the student.
     if (data.letterUrl && !row.letterSentAt) patch.letterSentAt = new Date();
 

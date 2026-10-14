@@ -1,6 +1,7 @@
 // src/modules/tasks/tasks-model.js
 import { DataTypes } from "sequelize";
 import sequelize from "../../database/connection.js";
+import { PlacementStudent } from "../students/students-model.js";
 
 /** Coordinator to-do item — the placement cell's own work tracker. */
 const PlacementTask = sequelize.define("PlacementTask", {
@@ -10,11 +11,11 @@ const PlacementTask = sequelize.define("PlacementTask", {
   // What the task hangs off, when it hangs off anything.
   related_type:{ type: DataTypes.STRING, allowNull: true },   // "company" | "job" | "mou" | "student"
   related_id: { type: DataTypes.UUID, allowNull: true },
-  assigned_to:{ type: DataTypes.UUID, allowNull: true },
+  assignedTo: { type: DataTypes.UUID, allowNull: true, field: "assigned_to" },
   due_date:   { type: DataTypes.DATEONLY, allowNull: true },
   priority:   { type: DataTypes.ENUM("Low", "Normal", "High", "Urgent"), defaultValue: "Normal" },
   status:     { type: DataTypes.ENUM("Open", "In progress", "Done", "Cancelled"), defaultValue: "Open" },
-  created_by: { type: DataTypes.UUID, allowNull: true },
+  createdBy:  { type: DataTypes.UUID, allowNull: true, field: "created_by" },
 }, {
   tableName: "placement_tasks",
   timestamps: true,
@@ -32,7 +33,7 @@ const OffCampusRecord = sequelize.define("OffCampusRecord", {
   studentName: { type: DataTypes.STRING, allowNull: true },
   companyName: { type: DataTypes.STRING, allowNull: false },
   role:        { type: DataTypes.STRING, allowNull: true },
-  ctc:         { type: DataTypes.FLOAT, allowNull: true },
+  ctcValue:    { type: DataTypes.FLOAT, allowNull: true, field: "ctc_value" },
   location:    { type: DataTypes.STRING, allowNull: true },
   sector:      { type: DataTypes.STRING, allowNull: true },
   offerDate:   { type: DataTypes.DATEONLY, allowNull: true },
@@ -50,7 +51,7 @@ const OffCampusRecord = sequelize.define("OffCampusRecord", {
   // "Self-sourced" | "Referral"
   source:      { type: DataTypes.STRING, allowNull: true },
   // Stipend or CTC as typed ("₹40,000/mo", "₹18 LPA"); `ctc` keeps the numeric.
-  package:     { type: DataTypes.STRING, allowNull: true },
+  ctc:         { type: DataTypes.STRING, allowNull: true },
   appliedAt:   { type: DataTypes.DATE, allowNull: true },
   startDate:   { type: DataTypes.DATEONLY, allowNull: true },
   endDate:     { type: DataTypes.DATEONLY, allowNull: true },
@@ -64,5 +65,8 @@ const OffCampusRecord = sequelize.define("OffCampusRecord", {
   underscored: true,
   indexes: [{ fields: ["student_id"] }, { fields: ["status"] }],
 });
+
+PlacementStudent.hasMany(OffCampusRecord, { foreignKey: "studentId", sourceKey: "userId", as: "offCampusRecords", constraints: false });
+OffCampusRecord.belongsTo(PlacementStudent, { foreignKey: "studentId", targetKey: "userId", as: "student", constraints: false });
 
 export { PlacementTask, OffCampusRecord };

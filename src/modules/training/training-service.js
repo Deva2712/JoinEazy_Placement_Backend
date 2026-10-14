@@ -9,10 +9,11 @@
 // the roster and store the real FK; reads emit the roll number back.
 import { Op } from "sequelize";
 import {
-  TrainingInstructor, TrainingCourse, CourseEnrollment,
-  TrainingSession, TrainingAttendance, TrainingTest, TrainingScore,
+  TrainingCourse, CourseEnrollment, TrainingSession, TrainingAttendance,
+  TrainingTest, TrainingScore,
 } from "./training-model.js";
 import { PlacementStudent } from "../students/students-model.js";
+import { User } from "../auth/auth-model.js";
 import { crudService } from "../../utils/crud.js";
 
 const notFound = (m) => { const e = new Error(m); e.statusCode = 404; throw e; };
@@ -23,7 +24,7 @@ const resolveStudent = async (studentId) => {
   if (!studentId) badRequest("studentId is required");
   const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(studentId));
   const roster = isUuid
-    ? await PlacementStudent.findByPk(studentId)
+    ? await PlacementStudent.findOne({ where: { userId: studentId } })
     : await PlacementStudent.findOne({ where: { rollNo: String(studentId) } });
   if (!roster) badRequest(`No student on the placement roster matches "${studentId}".`);
   return roster;
@@ -46,7 +47,12 @@ const tests = crudService(TrainingTest, { order: [["date", "DESC"]] });
 export const service = {
   // ─── Instructors ───────────────────────────────────────────────────────────
   listInstructors: async () => {
-    const rows = await TrainingInstructor.findAll({ order: [["name", "ASC"]], raw: true });
+    const rows = await User.findAll({
+      where: { role: "professor" },
+      attributes: ["id", "name", "email", "role", "department", "designation"],
+      order: [["name", "ASC"]],
+      raw: true,
+    });
     return rows;
   },
 
@@ -94,7 +100,7 @@ export const service = {
 
   attendanceForStudent: async (studentId) => {
     const roster = await resolveStudent(studentId);
-    const rows = await TrainingAttendance.findAll({ where: { studentId: roster.id }, raw: true });
+    const rows = await TrainingAttendance.findAll({ where: { studentId: roster.userId }, raw: true });
     return rows.map(attendanceToApi);
   },
 
@@ -111,8 +117,8 @@ export const service = {
     const roster = await resolveStudent(studentId);
 
     const [row] = await TrainingAttendance.findOrCreate({
-      where: { sessionId, studentId: roster.id },
-      defaults: { sessionId, studentId: roster.id, studentRollNo: roster.rollNo },
+      where: { sessionId, studentId: roster.userId },
+      defaults: { sessionId, studentId: roster.userId, studentRollNo: roster.rollNo },
     });
     const patch = { studentRollNo: roster.rollNo, markedBy };
     if (registered !== undefined) patch.registered = registered;
@@ -169,7 +175,7 @@ export const service = {
     if (query.testId) where.testId = query.testId;
     if (query.studentId) {
       const roster = await resolveStudent(query.studentId);
-      where.studentId = roster.id;
+      where.studentId = roster.userId;
     }
     const rows = await TrainingScore.findAll({ where, order: [["recordedAt", "DESC"]], raw: true });
     return rows.map(scoreToApi);
@@ -185,8 +191,8 @@ export const service = {
       badRequest(`Score ${score} exceeds this test's maximum of ${test.maxScore}.`);
     }
     const [row] = await TrainingScore.findOrCreate({
-      where: { testId, studentId: roster.id },
-      defaults: { testId, studentId: roster.id, studentRollNo: roster.rollNo },
+      where: { testId, studentId: roster.userId },
+      defaults: { testId, studentId: roster.userId, studentRollNo: roster.rollNo },
     });
     await row.update({
       studentRollNo: roster.rollNo,
@@ -219,8 +225,8 @@ export const service = {
       if (taken >= course.capacity) badRequest("This course is full.");
     }
     const [row] = await CourseEnrollment.findOrCreate({
-      where: { courseId, studentId: roster.id },
-      defaults: { courseId, studentId: roster.id },
+      where: { courseId, studentId: roster.userId },
+      defaults: { courseId, studentId: roster.userId },
     });
     return row.toJSON();
   },

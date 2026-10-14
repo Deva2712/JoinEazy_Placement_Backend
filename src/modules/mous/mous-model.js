@@ -11,6 +11,7 @@ const Mou = sequelize.define("Mou", {
   endDate:        { type: DataTypes.DATEONLY, allowNull: true },
   rolesCovered:   { type: DataTypes.JSON, allowNull: true, defaultValue: [] },
   rolesLookingFor:{ type: DataTypes.JSON, allowNull: true, defaultValue: [] },
+  scope:          { type: DataTypes.TEXT, allowNull: true },
   documents:      { type: DataTypes.JSON, allowNull: true, defaultValue: [] },
   // MOU_STATUSES in the frontend's placementCoordConstants.js is
   // ["Active","Renewal Pending","Expired","Draft"]; MoUForm additionally

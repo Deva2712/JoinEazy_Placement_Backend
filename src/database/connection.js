@@ -49,6 +49,92 @@ const resolveSyncMode = () => {
   return process.env.NODE_ENV === "production" ? "none" : "safe";
 };
 
+const getTargetedAlterModels = async () => {
+  const [
+    { User },
+    { default: Department },
+    CompaniesModels,
+    MousModels,
+    StudentsModels,
+    JobsModels,
+    ApplicationsModels,
+    InterviewsModels,
+    OffersModels,
+    TrainingModels,
+    AssessmentsModels,
+    TasksModels,
+  ] = await Promise.all([
+    import("../modules/auth/auth-model.js"),
+    import("../modules/department/department-model.js"),
+    import("../modules/companies/companies-model.js"),
+    import("../modules/mous/mous-model.js"),
+    import("../modules/students/students-model.js"),
+    import("../modules/jobs/jobs-model.js"),
+    import("../modules/applications/applications-model.js"),
+    import("../modules/interviews/interviews-model.js"),
+    import("../modules/offers/offers-model.js"),
+    import("../modules/training/training-model.js"),
+    import("../modules/assessments/assessments-model.js"),
+    import("../modules/tasks/tasks-model.js"),
+  ]);
+
+  return [
+    User,
+    Department,
+    ...Object.values(CompaniesModels),
+    ...Object.values(MousModels),
+    ...Object.values(StudentsModels),
+    ...Object.values(JobsModels),
+    ...Object.values(ApplicationsModels),
+    ...Object.values(InterviewsModels),
+    ...Object.values(OffersModels),
+    ...Object.values(TrainingModels),
+    ...Object.values(AssessmentsModels),
+    ...Object.values(TasksModels),
+  ].filter((model, index, models) =>
+    model && typeof model.sync === "function" && models.indexOf(model) === index
+  );
+};
+
+const getErrorMessage = (err) => err?.parent?.message || err?.original?.message || err?.message;
+
+const getTableName = (model) => {
+  const tableName = typeof model.getTableName === "function" ? model.getTableName() : model.tableName;
+  return typeof tableName === "object" ? tableName.tableName || JSON.stringify(tableName) : tableName;
+};
+
+const syncModelsTolerantly = async ({ alterStrictModels = false } = {}) => {
+  const strictModels = await getTargetedAlterModels();
+  const strictSet = new Set(strictModels);
+
+  for (const model of strictModels) {
+    await model.sync();
+  }
+
+  const skipped = [];
+  for (const model of Object.values(sequelize.models)) {
+    if (strictSet.has(model)) continue;
+    try {
+      await model.sync();
+    } catch (err) {
+      skipped.push(model.name);
+      logger.warn(
+        `Skipped non-placement model sync: model=${model.name}, table=${getTableName(model)}, error=${getErrorMessage(err)}`
+      );
+    }
+  }
+
+  if (alterStrictModels) {
+    for (const model of strictModels) {
+      await model.sync({ alter: true });
+    }
+  }
+
+  logger.warn(
+    `Non-placement model sync skipped ${skipped.length} model(s): ${skipped.length ? skipped.join(", ") : "none"}`
+  );
+};
+
 export const connectDB = async () => {
   await sequelize.authenticate();
   logger.info("PostgreSQL connected via Sequelize");
@@ -61,12 +147,8 @@ export const connectDB = async () => {
   }
 
   if (mode === "alter") {
-    logger.warn(
-      "DB_SYNC=alter — this duplicates UNIQUE constraints on every boot; " +
-      "prefer `npm run db:migrate`"
-    );
-    await sequelize.sync({ alter: true });
-    logger.info("Database synced (alter)");
+    await syncModelsTolerantly({ alterStrictModels: true });
+    logger.info("Database synced (safe global sync + targeted alter)");
     return;
   }
 
@@ -74,7 +156,7 @@ export const connectDB = async () => {
     logger.warn(`Unknown DB_SYNC value "${mode}" — falling back to "safe"`);
   }
 
-  await sequelize.sync();
+  await syncModelsTolerantly();
   logger.info("Database synced (safe — created missing tables only)");
 };
 

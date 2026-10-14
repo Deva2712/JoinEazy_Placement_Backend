@@ -46,12 +46,30 @@ export const interviewsForJob = asyncHandler(async (req, res) => {
   res.json({ success: true, data: rows.map((r) => r.toJSON()) });
 });
 
+// student_id holds users.id; the coordinator UI joins on roll number, like coord/applications.
+const rollByUserId = async (userIds) => {
+  const roster = await PlacementStudent.findAll({
+    where: { userId: [...new Set(userIds)] },
+    attributes: ["userId", "rollNo"], raw: true,
+  });
+  return Object.fromEntries(roster.map((r) => [r.userId, r.rollNo]));
+};
+
+const roundResultRows = async (where) => {
+  const rows = (await RoundResult.findAll({ where, order: [["recordedAt", "DESC"]] })).map((r) => r.toJSON());
+  const roll = await rollByUserId(rows.map((r) => r.studentId));
+  return rows.map((r) => ({ ...r, studentId: roll[r.studentId] ?? r.studentId }));
+};
+
 export const roundResults = asyncHandler(async (req, res) => {
   const where = { jobId: req.params.jobId };
   if (req.query.roundId) where.roundId = req.query.roundId;
-  const rows = await RoundResult.findAll({ where, order: [["recordedAt", "DESC"]] });
-  res.json({ success: true, data: rows.map((r) => r.toJSON()) });
+  res.json({ success: true, data: await roundResultRows(where) });
 });
+
+/** GET /placement/coord/round-results — every drive's round results. */
+export const allRoundResults = asyncHandler(async (req, res) =>
+  res.json({ success: true, data: await roundResultRows({}) }));
 
 export const publishAssessment = asyncHandler(async (req, res) => {
   const [test] = await AssessmentTest.findOrCreate({
@@ -68,29 +86,30 @@ export const publishAssessment = asyncHandler(async (req, res) => {
   res.json({ success: true, data: test.toJSON() });
 });
 
-export const getAssessmentResults = asyncHandler(async (req, res) => {
-  const test = await AssessmentTest.findOne({ where: { job_id: req.params.jobId } });
-  if (!test) return res.json({ success: true, data: [] });
-  const scores = await AssessmentScore.findAll({ where: { test_id: test.id }, raw: true });
-  // The Results tab and the student's own lookup read { jobId, studentId (a
-  // roll number), cleared, submittedAt, notes } — not raw score rows.
-  const roster = await PlacementStudent.findAll({
-    where: { id: scores.map((s) => s.student_id) },
-    attributes: ["id", "rollNo"], raw: true,
-  });
-  const rollById = Object.fromEntries(roster.map((r) => [r.id, r.rollNo]));
-  res.json({
-    success: true,
-    data: scores.map((s) => ({
-      id: s.id,
-      jobId: req.params.jobId,
-      studentId: rollById[s.student_id] ?? s.student_id,
-      cleared: s.result === "Cleared",
-      submittedAt: s.attempted_at,
-      notes: s.notes ?? "",
-    })),
-  });
-});
+// The Results tab and the student's own lookup read { jobId, studentId (a
+// roll number), cleared, submittedAt, notes } — not raw score rows.
+const assessmentResultRows = async (testWhere) => {
+  const tests = await AssessmentTest.findAll({ where: testWhere, raw: true });
+  if (!tests.length) return [];
+  const jobByTest = Object.fromEntries(tests.map((t) => [t.id, t.job_id]));
+  const scores = await AssessmentScore.findAll({ where: { test_id: Object.keys(jobByTest) }, raw: true });
+  const roll = await rollByUserId(scores.map((s) => s.student_id));
+  return scores.map((s) => ({
+    id: s.id,
+    jobId: jobByTest[s.test_id],
+    studentId: roll[s.student_id] ?? s.student_id,
+    cleared: s.result === "Cleared",
+    submittedAt: s.attempted_at,
+    notes: s.notes ?? "",
+  }));
+};
+
+export const getAssessmentResults = asyncHandler(async (req, res) =>
+  res.json({ success: true, data: await assessmentResultRows({ job_id: req.params.jobId }) }));
+
+/** GET /placement/coord/assessment-results — every drive's assessment results. */
+export const allAssessmentResults = asyncHandler(async (req, res) =>
+  res.json({ success: true, data: await assessmentResultRows({}) }));
 
 /**
  * Applications this drive's assessment applies to: Shortlisted (yet to sit it)
@@ -149,7 +168,7 @@ export const uploadAssessmentResults = asyncHandler(async (req, res) => {
     const roster = await PlacementStudent.findOne({ where: { rollNo } });
     if (!roster) { skipped.push({ rollNo, reason: "Unknown rollNo — no matching student" }); continue; }
 
-    const app = await Application.findOne({ where: { jobId, studentId: roster.id } });
+    const app = await Application.findOne({ where: { jobId, studentId: roster.userId } });
     if (!app) { skipped.push({ rollNo, reason: "Student hasn't applied to this job" }); continue; }
     if (!["Shortlisted", "Test Cleared", "Rejected"].includes(app.status)) {
       skipped.push({ rollNo, reason: `Application at status "${app.status}" — must be Shortlisted or already through the assessment stage` });
@@ -164,8 +183,8 @@ export const uploadAssessmentResults = asyncHandler(async (req, res) => {
 
     const notes = typeof row?.notes === "string" ? row.notes.trim() : "";
     const [score, wasCreated] = await AssessmentScore.findOrCreate({
-      where: { test_id: test.id, student_id: roster.id },
-      defaults: { test_id: test.id, student_id: roster.id },
+      where: { test_id: test.id, student_id: roster.userId },
+      defaults: { test_id: test.id, student_id: roster.userId },
     });
     await score.update({
       result: cleared ? "Cleared" : "Not cleared",

@@ -14,7 +14,12 @@ const Company = sequelize.define("Company", {
   // CompanyForm submits "Active" / "Inactive" (labelled "Former" in the UI), and
   // CompanyCard/CompaniesTab branch on those exact strings. The lowercase
   // variants are the skeleton's originals, kept valid so existing rows load.
-  status:          { type: DataTypes.ENUM("Active", "Inactive", "active", "inactive", "blacklisted"), defaultValue: "Active" },
+  status:          { type: DataTypes.ENUM("Active", "Inactive", "Blacklisted"), defaultValue: "Active" },
+  relationship:    { type: DataTypes.ENUM("Premium Partner", "Strategic Partner", "Active Recruiter", "Standard Recruiter"), defaultValue: "Standard Recruiter" },
+  partnerSince:    { type: DataTypes.STRING, allowNull: true },
+  riskLevel:       { type: DataTypes.ENUM("Low", "Medium", "High"), defaultValue: "Low" },
+  flagReason:      { type: DataTypes.TEXT, allowNull: true },
+  approved:        { type: DataTypes.BOOLEAN, defaultValue: true },
   // Why a partnership ended — required by the form when status is Inactive and
   // rendered by CompanyDetailsModal. Had no column, so it was silently dropped.
   inactiveReason:  { type: DataTypes.TEXT, allowNull: true },

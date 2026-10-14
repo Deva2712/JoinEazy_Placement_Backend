@@ -1,0 +1,15 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: joineazy_unified_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: joineazy_unified
+      POSTGRES_USER: joineazy_user
+      POSTGRES_PASSWORD: joineazy_pass
+    ports:
+      - "5436:5432"
+    volumes:
+      - unified_pg_data:/var/lib/postgresql/data
+volumes:
+  unified_pg_data:

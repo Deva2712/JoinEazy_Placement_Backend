@@ -13,7 +13,8 @@ export const login = asyncHandler(async (req, res) => {
   const { email, password } = req.body;
   const result = await service.login(email, password);
   res.cookie("token", result.token, COOKIE_OPTIONS);
-  res.json({ success: true, data: result });
+  // Top-level user/token mirror the other role backends; the shared frontend reads those.
+  res.json({ success: true, data: result, user: result.user, token: result.token });
 });
 
 export const logout = asyncHandler(async (req, res) => {
@@ -22,4 +23,4 @@ export const logout = asyncHandler(async (req, res) => {
 });
 
 export const me = asyncHandler(async (req, res) =>
-  res.json({ success: true, data: req.user }));
+  res.json({ success: true, data: req.user, user: req.user }));

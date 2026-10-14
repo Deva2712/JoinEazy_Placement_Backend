@@ -5,8 +5,20 @@ import logger from "./src/utils/logger.js";
 
 // Register every model (and association) before any sync runs.
 import "./src/database/models.js";
-import { seedAll } from "./src/database/seed.js";
+import { seedAll } from "./src/database/seed-unified.js";
 import { Company } from "./src/modules/companies/companies-model.js";
+import { User } from "./src/modules/auth/auth-model.js";
+import Department from "./src/modules/department/department-model.js";
+import * as CompaniesModels from "./src/modules/companies/companies-model.js";
+import * as MousModels from "./src/modules/mous/mous-model.js";
+import * as StudentsModels from "./src/modules/students/students-model.js";
+import * as JobsModels from "./src/modules/jobs/jobs-model.js";
+import * as ApplicationsModels from "./src/modules/applications/applications-model.js";
+import * as InterviewsModels from "./src/modules/interviews/interviews-model.js";
+import * as OffersModels from "./src/modules/offers/offers-model.js";
+import * as TrainingModels from "./src/modules/training/training-model.js";
+import * as AssessmentsModels from "./src/modules/assessments/assessments-model.js";
+import * as TasksModels from "./src/modules/tasks/tasks-model.js";
 
 // ─── Process-level safety net ────────────────────────────────────────────────
 // Node terminates on an unhandled rejection by default. One un-awaited promise
@@ -26,6 +38,61 @@ process.on("uncaughtException", (err) => {
 
 const PORT = process.env.PORT || 8003;
 
+const targetedAlterModels = [
+  User,
+  Department,
+  ...Object.values(CompaniesModels),
+  ...Object.values(MousModels),
+  ...Object.values(StudentsModels),
+  ...Object.values(JobsModels),
+  ...Object.values(ApplicationsModels),
+  ...Object.values(InterviewsModels),
+  ...Object.values(OffersModels),
+  ...Object.values(TrainingModels),
+  ...Object.values(AssessmentsModels),
+  ...Object.values(TasksModels),
+].filter((model, index, models) =>
+  model && typeof model.sync === "function" && models.indexOf(model) === index
+);
+
+const getErrorMessage = (err) => err?.parent?.message || err?.original?.message || err?.message;
+
+const getTableName = (model) => {
+  const tableName = typeof model.getTableName === "function" ? model.getTableName() : model.tableName;
+  return typeof tableName === "object" ? tableName.tableName || JSON.stringify(tableName) : tableName;
+};
+
+const syncModelsTolerantly = async ({ alterStrictModels = false } = {}) => {
+  const strictSet = new Set(targetedAlterModels);
+
+  for (const model of targetedAlterModels) {
+    await model.sync();
+  }
+
+  const skipped = [];
+  for (const model of Object.values(sequelize.models)) {
+    if (strictSet.has(model)) continue;
+    try {
+      await model.sync();
+    } catch (err) {
+      skipped.push(model.name);
+      logger.warn(
+        `Skipped non-placement model sync: model=${model.name}, table=${getTableName(model)}, error=${getErrorMessage(err)}`
+      );
+    }
+  }
+
+  if (alterStrictModels) {
+    for (const model of targetedAlterModels) {
+      await model.sync({ alter: true });
+    }
+  }
+
+  logger.warn(
+    `Non-placement model sync skipped ${skipped.length} model(s): ${skipped.length ? skipped.join(", ") : "none"}`
+  );
+};
+
 const start = async () => {
   try {
     await sequelize.authenticate();
@@ -34,10 +101,10 @@ const start = async () => {
     // "safe" creates missing tables only. Column changes go through
     // `npm run db:migrate`, never silently on boot.
     if (process.env.DB_SYNC === "alter") {
-      await sequelize.sync({ alter: true });
-      logger.info("Database synced (alter)");
+      await syncModelsTolerantly({ alterStrictModels: true });
+      logger.info("Database synced (safe global sync + targeted alter)");
     } else if (process.env.DB_SYNC !== "none") {
-      await sequelize.sync();
+      await syncModelsTolerantly();
       logger.info("Database synced (safe — created missing tables only)");
     }
 

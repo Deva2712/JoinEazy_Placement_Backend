@@ -1,6 +1,7 @@
 // src/modules/assessments/assessments-model.js
 import { DataTypes } from "sequelize";
 import sequelize from "../../database/connection.js";
+import { PlacementStudent } from "../students/students-model.js";
 
 /**
  * An online test attached to a drive (or run standalone for practice).
@@ -49,5 +50,7 @@ const AssessmentScore = sequelize.define("AssessmentScore", {
 
 AssessmentTest.hasMany(AssessmentScore, { foreignKey: "test_id", as: "scores", onDelete: "CASCADE" });
 AssessmentScore.belongsTo(AssessmentTest, { foreignKey: "test_id", as: "test" });
+PlacementStudent.hasMany(AssessmentScore, { foreignKey: "student_id", sourceKey: "userId", as: "assessmentScores", constraints: false });
+AssessmentScore.belongsTo(PlacementStudent, { foreignKey: "student_id", targetKey: "userId", as: "student", constraints: false });
 
 export { AssessmentTest, AssessmentScore };

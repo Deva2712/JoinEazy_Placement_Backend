@@ -2,6 +2,7 @@
 import { DataTypes } from "sequelize";
 import sequelize from "../../database/connection.js";
 import { Application } from "../applications/applications-model.js";
+import { PlacementStudent } from "../students/students-model.js";
 
 const InterviewSlot = sequelize.define("InterviewSlot", {
   id:            { type: DataTypes.UUID, defaultValue: DataTypes.UUIDV4, primaryKey: true },
@@ -36,5 +37,7 @@ const InterviewSlot = sequelize.define("InterviewSlot", {
 
 Application.hasMany(InterviewSlot, { foreignKey: "applicationId", as: "interviews", onDelete: "CASCADE" });
 InterviewSlot.belongsTo(Application, { foreignKey: "applicationId", as: "application" });
+PlacementStudent.hasMany(InterviewSlot, { foreignKey: "studentId", sourceKey: "userId", as: "interviews", constraints: false });
+InterviewSlot.belongsTo(PlacementStudent, { foreignKey: "studentId", targetKey: "userId", as: "student", constraints: false });
 
 export { InterviewSlot };

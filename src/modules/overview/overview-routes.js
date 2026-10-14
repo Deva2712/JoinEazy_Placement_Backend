@@ -2,12 +2,15 @@
 import express from "express";
 import { protect, authorize, PLACEMENT_STAFF } from "../../middleware/auth.middleware.js";
 import * as ctrl from "./overview-controller.js";
+import * as jobsCtrl from "../jobs/jobs-controller.js";
 
 const router = express.Router();
 router.use(protect);
 
 router.get("/overview",              ctrl.student);      // the signed-in student
 router.get("/coord/overview",        authorize(...PLACEMENT_STAFF), ctrl.coordinator);
+router.get("/coord/assessment-results", authorize(...PLACEMENT_STAFF), jobsCtrl.allAssessmentResults);
+router.get("/coord/round-results",   authorize(...PLACEMENT_STAFF), jobsCtrl.allRoundResults);
 
 // Analytics history. Reads are open to any authenticated user: the professor
 // and HOD dashboards below are read-only views over the same rows, and
